@@ -1,0 +1,84 @@
+diff --git a/Makefile b/Makefile
+index 4e88dcc..1740252 100644
+--- a/Makefile
++++ b/Makefile
+@@ -913,7 +913,7 @@ export mod_sign_cmd
+ 
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/
++core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/ securitylevel/
+ 
+ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
+ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff --git a/arch/m32r/boot/compressed/misc.c b/arch/m32r/boot/compressed/misc.c
+index 3a76927..41d76f9 100644
+--- a/arch/m32r/boot/compressed/misc.c
++++ b/arch/m32r/boot/compressed/misc.c
+@@ -88,5 +88,5 @@ decompress_kernel(int mmu_on, unsigned char *zimage_data,
+ 	puts("\nDecompressing Linux... ");
+ 	__decompress(input_data, input_len, NULL, NULL, output_data, 0,
+ 			NULL, error);
+-	puts("done.\nBooting the kernel.\n");
++	puts("done.\nBooting the kernel.");
+ }
+diff --git a/arch/x86/boot/compressed/misc.c b/arch/x86/boot/compressed/misc.c
+index c945acd..aa4d817 100644
+--- a/arch/x86/boot/compressed/misc.c
++++ b/arch/x86/boot/compressed/misc.c
+@@ -407,5 +407,6 @@ asmlinkage __visible void *extract_kernel(void *rmode, memptr heap,
+ 	parse_elf(output);
+ 	handle_relocations(output, output_len, virt_addr);
+ 	debug_putstr("done.\nBooting the kernel.\n");
++	debug_putstr("\n### Timothy Hinds (Exercise 2) ###");
+ 	return output;
+ }
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index e93ef0b..9640418 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -338,6 +338,8 @@
+ 329	common	pkey_mprotect		sys_pkey_mprotect
+ 330	common	pkey_alloc		sys_pkey_alloc
+ 331	common	pkey_free		sys_pkey_free
++332	common	set_security_level	sys_set_security_level
++333	common	get_security_level	sys_get_security_level
+ 
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
+diff --git a/include/linux/init_task.h b/include/linux/init_task.h
+index 325f649..ca2126c 100644
+--- a/include/linux/init_task.h
++++ b/include/linux/init_task.h
+@@ -201,6 +201,7 @@ extern struct task_group root_task_group;
+ {									\
+ 	INIT_TASK_TI(tsk)						\
+ 	.state		= 0,						\
++	.securitylevel	= 0,						\
+ 	.stack		= init_stack,					\
+ 	.usage		= ATOMIC_INIT(2),				\
+ 	.flags		= PF_KTHREAD,					\
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 75d4bee..c87cc06 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1634,6 +1634,7 @@ struct task_struct {
+ 	atomic_t usage;
+ 	unsigned int flags;	/* per process flags, defined below */
+ 	unsigned int ptrace;
++	int securitylevel;	//P1 variable for security level
+ 
+ #ifdef CONFIG_SMP
+ 	struct llist_node wake_entry;
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 91a740f..16f437d 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -902,5 +902,7 @@ asmlinkage long sys_pkey_mprotect(unsigned long start, size_t len,
+ 				  unsigned long prot, int pkey);
+ asmlinkage long sys_pkey_alloc(unsigned long flags, unsigned long init_val);
+ asmlinkage long sys_pkey_free(int pkey);
++asmlinkage long sys_set_security_level(int pid, int new_level);
++asmlinkage long sys_get_security_level(int pid);
+ 
+ #endif
